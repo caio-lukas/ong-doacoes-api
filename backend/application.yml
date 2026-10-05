@@ -4,6 +4,7 @@ spring:
     username: ${DB_USER}
     password: ${DB_PASSWORD}
   jpa:
+    open-in-view: false
     hibernate:
       ddl-auto: validate
   flyway:
