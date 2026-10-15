@@ -14,7 +14,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByEmail(String email);
 
-    boolean existsByCargo(CargoUsuario cargo);
+    boolean existsByCargoAndAtivo(CargoUsuario cargo, boolean ativo);
 
     Page<User> findByAtivo(boolean ativo, Pageable pageable);
 }

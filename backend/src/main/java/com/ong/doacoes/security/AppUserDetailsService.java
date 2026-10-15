@@ -1,6 +1,6 @@
 package com.ong.doacoes.security;
 
-import com.ong.doacoes.Entity.User;
+import com.ong.doacoes.entity.User;
 import com.ong.doacoes.repository.UserRepository;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;

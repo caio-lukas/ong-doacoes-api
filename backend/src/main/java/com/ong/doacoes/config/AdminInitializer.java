@@ -12,8 +12,15 @@ import org.springframework.stereotype.Component;
 
 /**
  * Cria o primeiro administrador na inicialização, a partir de variáveis de ambiente
- * (ADMIN_EMAIL e ADMIN_PASSWORD). Não faz nada se já existir um admin.
- * A senha nunca fica no código nem em migration.
+ * (ADMIN_EMAIL e ADMIN_PASSWORD). Também garante que exista pelo menos um administrador
+ * ATIVO, usando as mesmas variáveis de ambiente. A senha nunca fica no código nem em migration.
+ *
+ * - Já existe um admin ativo: não faz nada.
+ * - Não existe, e o e-mail das variáveis não está cadastrado: cria o admin.
+ * - Não existe, e o e-mail já está cadastrado (por exemplo, o admin foi desativado):
+ *   reativa essa conta como ADMIN, sem alterar a senha. É o caminho de recuperação
+ *   para quando todos os admins ficam inativos: basta reiniciar a aplicação.
+ *   Quem controla as variáveis de ambiente já controla o servidor, então não há risco novo.
  */
 @Component
 public class AdminInitializer implements CommandLineRunner {
@@ -40,15 +47,27 @@ public class AdminInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        if (userRepository.existsByCargo(CargoUsuario.ADMIN)) {
+        if (userRepository.existsByCargoAndAtivo(CargoUsuario.ADMIN, true)) {
             return;
         }
         if (email.isBlank() || senha.isBlank()) {
-            log.warn("Não há administrador cadastrado e ADMIN_EMAIL/ADMIN_PASSWORD não foram definidos. "
-                    + "Defina as variáveis de ambiente para criar o primeiro admin.");
+            log.warn("Não há administrador ativo e ADMIN_EMAIL/ADMIN_PASSWORD não foram definidos. "
+                    + "Defina as variáveis de ambiente para criar ou recuperar o admin.");
             return;
         }
-        userRepository.save(User.admin(nome, email, passwordEncoder.encode(senha)));
-        log.info("Primeiro administrador criado: {}", email);
+
+        String emailNormalizado = email.trim().toLowerCase();
+        User existente = userRepository.findByEmail(emailNormalizado).orElse(null);
+
+        if (existente == null) {
+            userRepository.save(User.admin(nome, emailNormalizado, passwordEncoder.encode(senha)));
+            log.info("Primeiro administrador criado: {}", emailNormalizado);
+        } else {
+            existente.promoverParaAdmin();
+            existente.aprovar();
+            userRepository.save(existente);
+            log.warn("Nenhum admin ativo encontrado: {} foi reativado como administrador "
+                    + "(a senha não foi alterada).", emailNormalizado);
+        }
     }
 }
