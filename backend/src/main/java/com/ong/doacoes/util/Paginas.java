@@ -12,9 +12,19 @@ public final class Paginas {
     private Paginas() {
     }
 
+    /** Ordem crescente pelo campo informado. */
     public static Pageable de(int page, int size, String ordenarPor) {
+        return criar(page, size, Sort.by(ordenarPor));
+    }
+
+    /** Ordem decrescente pelo campo informado (ex.: mais recentes primeiro). */
+    public static Pageable decrescente(int page, int size, String ordenarPor) {
+        return criar(page, size, Sort.by(Sort.Direction.DESC, ordenarPor));
+    }
+
+    private static Pageable criar(int page, int size, Sort sort) {
         int pagina = Math.max(page, 0);
         int tamanho = Math.min(Math.max(size, 1), TAMANHO_MAXIMO);
-        return PageRequest.of(pagina, tamanho, Sort.by(ordenarPor));
+        return PageRequest.of(pagina, tamanho, sort);
     }
 }
