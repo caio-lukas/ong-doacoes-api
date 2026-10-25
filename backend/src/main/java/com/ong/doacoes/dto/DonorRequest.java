@@ -11,9 +11,14 @@ public record DonorRequest(
         @Size(max = 120, message = "O nome deve ter no máximo 120 caracteres")
         String nome,
 
+        /*
+         * O @Email do Hibernate Validator aceita "maria@localhost" (sem domínio completo).
+         * Aqui exigimos extensão de pelo menos 2 letras.
+         */
         @NotBlank(message = "O e-mail é obrigatório")
-        @Email(message = "E-mail inválido")
         @Size(max = 160, message = "O e-mail deve ter no máximo 160 caracteres")
+        @Pattern(regexp = "^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)*\\.[A-Za-z]{2,}$",
+                message = "E-mail inválido. Use o formato nome@dominio.com")
         String email,
 
         /*
