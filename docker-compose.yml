@@ -3,10 +3,11 @@ services:
     image: postgres:16
     container_name: ong-db
     environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:?Defina DB_NAME no arquivo .env}
+      POSTGRES_USER: ${DB_USER:?Defina DB_USER no arquivo .env}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD no arquivo .env}
     ports:
+      # Útil no desenvolvimento. Remova em produção.
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -23,25 +24,19 @@ services:
       db:
         condition: service_healthy
     environment:
+      # Dentro do Compose, o banco é acessado pelo nome do serviço ("db"), não por localhost
       DB_HOST: db
       DB_PORT: 5432
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
-      JWT_SECRET: ${JWT_SECRET}
+      JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET no arquivo .env (mínimo de 32 caracteres)}
+      ADMIN_NOME: ${ADMIN_NOME:-Administrador}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     ports:
       - "8080:8080"
-
-  frontend:
-    build:
-      context: ./frontend
-      args:
-        VITE_API_URL: http://localhost:8080
-    container_name: ong-frontend
-    depends_on:
-      - api
-    ports:
-      - "3000:80"
+    restart: unless-stopped
 
 volumes:
   pgdata:
