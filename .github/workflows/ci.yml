@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  testes:
+    name: Build e testes
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      # Roda os testes unitários e os de integração (o Testcontainers usa o Docker do runner)
+      - name: Compila e testa
+        run: mvn -B verify
+
+      - name: Publica o relatório de cobertura (JaCoCo)
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: relatorio-jacoco
+          path: backend/target/site/jacoco
+          if-no-files-found: ignore
+
+      - name: Publica os relatórios dos testes (se algo falhou)
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: relatorios-surefire
+          path: backend/target/surefire-reports
+          if-no-files-found: ignore
+
+  docker:
+    name: Imagem Docker e smoke test
+    runs-on: ubuntu-latest
+    needs: testes
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Cria o .env a partir do exemplo
+        run: cp .env.example .env
+
+      - name: Sobe o banco e a API
+        run: docker compose up -d --build
+
+      - name: Espera a API responder
+        run: |
+          for i in $(seq 1 40); do
+            if curl -fsS http://localhost:8080/v3/api-docs > /dev/null; then
+              echo "API no ar"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "A API não respondeu a tempo"
+          exit 1
+
+      # Prova que banco, migrations, criação do admin e JWT funcionam dentro dos containers
+      - name: Faz login com o administrador criado na inicialização
+        run: |
+          set -a; source .env; set +a
+          curl -fsS -X POST http://localhost:8080/auth/login \
+            -H 'Content-Type: application/json' \
+            -d "{\"email\":\"$ADMIN_EMAIL\",\"senha\":\"$ADMIN_PASSWORD\"}"
+
+      - name: Logs dos containers (se algo falhou)
+        if: failure()
+        run: docker compose logs
+
+      - name: Encerra os containers
+        if: always()
+        run: docker compose down -v
